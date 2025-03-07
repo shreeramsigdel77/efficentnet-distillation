@@ -1,0 +1,27 @@
+# Ignore all .pyc files (compiled Python files)
+*.pyc
+model/__pycache__/
+utils/__pycache__/
+__pycache__/
+
+# Ignore all files in the 'venv' directory
+venv-custeffnet-AD/
+
+# Ignore log files
+*.log
+
+# Ignore Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore any other custom directories/files
+B3_dataset_2_kana_update2resources/
+B0_distillation_dataset_2_kana_update2resources/
+B0_dataset_2_kana_update2resources/
+Dataset/
+.history/
+runs/
+
+# Ignore .py files
+main_b3_test.py
+main_b3.py
+
