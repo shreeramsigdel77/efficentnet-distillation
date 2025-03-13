@@ -8,7 +8,7 @@ import torchvision.transforms as transforms
 from utils.custom_augmentation import HSVTransform
 from model.data_plotting import generate_eda_plot
 
-class ImageTransform:
+class ImageTrainTransform:
     def __init__(self, input_size):
         """
         Initializes the image transformation pipeline.
@@ -42,25 +42,52 @@ class ImageTransform:
         return self.transform(image)
 
 
+class ImageTestTransform:
+    def __init__(self, input_size):
+        """
+        Initializes the image transformation pipeline.
+
+        Args:
+            input_size (int): The size to which the image should be resized.
+        """
+        self.transform = transforms.Compose([
+            transforms.Resize((input_size, input_size)),  # Keep a consistent size
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+
+    def __call__(self, image):
+        """
+        Applies the transformation pipeline to an image.
+
+        Args:
+            image (PIL.Image or Tensor): The input image.
+
+        Returns:
+            Tensor: The transformed image.
+        """
+        return self.transform(image)
+
 
 
 class DatasetLoader:
     """
     Class to load training and validation datasets.
     """
-    def __init__(self, dataset_path, category, batch_size, transform, current_pj_path):
+    def __init__(self, dataset_path, category, batch_size, train_transform, test_transform, current_pj_path):
         self.dataset_path = dataset_path
         self.category = category
         self.batch_size = batch_size
-        self.transform = transform
+        self.train_transform = train_transform
+        self.test_transform = test_transform
         self.current_pj_path = current_pj_path
 
     def load(self):
         train_path = os.path.join(self.dataset_path, self.category, "train")
         val_path = os.path.join(self.dataset_path, self.category, "valid")
 
-        train_dataset = ImageFolder(train_path, transform=self.transform)
-        val_dataset = ImageFolder(val_path, transform=self.transform)
+        train_dataset = ImageFolder(train_path, transform=self.train_transform)
+        val_dataset = ImageFolder(val_path, transform=self.test_transform)
 
         train_loader = DataLoader(
             train_dataset, batch_size=self.batch_size, shuffle=True,

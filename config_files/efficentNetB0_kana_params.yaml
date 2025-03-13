@@ -5,6 +5,7 @@ network_architecture: "efficientnet_b0"
 network_architecture: "efficientnet_b3"
 input_img_size: 128
 lr: 0.0001
+end_lr: 0.00001  # minimum learning rate 
 batch_size: 16
 num_workers: 4
 epochs: 50  #50

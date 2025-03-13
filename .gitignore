@@ -20,8 +20,11 @@ B0_dataset_2_kana_update2resources/
 Dataset/
 .history/
 runs/
+CUSTOM_Number_processing/
+obsolute_code/
 
 # Ignore .py files
 main_b3_test.py
 main_b3.py
+main_distill_backup.py
 

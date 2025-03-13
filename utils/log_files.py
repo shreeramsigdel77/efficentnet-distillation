@@ -39,3 +39,31 @@ def log_to_csv(output_path, category, epoch, lr, train_loss, val_loss, val_acc, 
         writer.writerow([epoch, lr, train_loss, val_loss, val_acc, precision, recall, f1])
 
     # print(f"Logged epoch {epoch} to {csv_file}")
+
+
+
+
+
+def log_to_csv_distillation(output_path, epoch, lr, train_loss, val_loss, val_acc, precision_teacher, recall_teacher, f1_teacher, precision_student, recall_student, f1_student):
+    """
+    Logs training and validation metrics to a CSV file.
+
+    """
+    # Create the CSV file path
+    csv_file = os.path.join(output_path, f"metrics.csv")
+
+    # Check if the file already exists to avoid overwriting the header
+    file_exists = os.path.isfile(csv_file)
+
+    # Open the CSV file in append mode
+    with open(csv_file, mode="a", newline="") as f:
+        writer = csv.writer(f)
+
+        # If the file doesn't exist, write the header row
+        if not file_exists:
+            writer.writerow(["Epoch","Learning Rate", "Distillaiton Train Loss", "Distillaiton Validation Loss", "Distillaiton Validation Accuracy", "Student P", "Student R", "Student F1", "Teacher P", "Teacher R", "Teacher F1"])
+
+        # Write the current epoch's metrics
+        writer.writerow([epoch, lr, train_loss, val_loss, val_acc, precision_student, recall_student, f1_student, precision_teacher, recall_teacher, f1_teacher])
+
+    # print(f"Logged epoch {epoch} to {csv_file}")

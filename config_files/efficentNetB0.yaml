@@ -2,18 +2,19 @@ dataset_path : "/home/shreeram/workspace/ambl/custom_efficent_autodistillation/D
 # categories: ["Rock Paper Scissors.v1-raw-300x300.folder"]
 # categories: ["dataset_2_kana_update2"] 
 categories: ["dataset_0_region_update2"] 
-network_architecture: "efficientnet_b3"
+network_architecture: "efficientnet_b0"
 # network_architecture: "efficientnet_b3"
 input_img_size: 128
-lr: 0.0001
-batch_size: 16
+lr: 0.0001  # starting
+end_lr: 0.00001  # minimum learning rate 
+batch_size: 32
 num_workers: 4
 epochs: 50  #50
 early_stopping_patience: 10 #10
 #device uses GPU if available else uses cpu by default
 project_base_dir: "runs" # Base project directory
 # project_name: "exp"
-project_name: "dataset_0_region_update2_efficentnetb0"
+project_name: "dataset_0_region_update2_customized_efficentnetb0"
 
 
 # For teacher student training

@@ -15,7 +15,7 @@ def compute_metrics(y_true, y_pred, num_classes=142):
 
 
 # Function to save metrics plots
-def plot_metrics(output_path, epochs_metrics, precisions_metrics, recalls_metrics, f1_scores_metrics):
+def plot_metrics(output_path, epochs_metrics, precisions_metrics, recalls_metrics, f1_scores_metrics, teacher_model=False):
     """
     Saves the Precision, Recall, and F1 Score plot as an image file (both combined and separate graphs).
 
@@ -44,7 +44,11 @@ def plot_metrics(output_path, epochs_metrics, precisions_metrics, recalls_metric
     # plt.grid()
     # Format y-axis ticks to show 6 decimal places
     plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.6f'))
-    plt.savefig(os.path.join(output_path, "metrics_combined.png"), bbox_inches="tight")
+    # save_filename = "metrics_combined.png"
+    uniq_key = "teacher_" if teacher_model else ""
+    
+
+    plt.savefig(os.path.join(output_path, f"metrics_{uniq_key}combined.png"), bbox_inches="tight")
     plt.close()  # Close figure
 
     # Individual plots
@@ -65,7 +69,7 @@ def plot_metrics(output_path, epochs_metrics, precisions_metrics, recalls_metric
         # plt.grid()
         # Format y-axis ticks for individual plots
         plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.6f'))
-        plt.savefig(os.path.join(output_path, f"{metric_name}.png"), bbox_inches="tight")
+        plt.savefig(os.path.join(output_path, f"{metric_name}{uniq_key}.png"), bbox_inches="tight")
         plt.close()  # Close figure
 
     print(f"Plots saved in: {output_path}")

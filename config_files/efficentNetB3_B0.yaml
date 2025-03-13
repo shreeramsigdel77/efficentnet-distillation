@@ -8,7 +8,8 @@ teacher_pre_trained_model: "/home/shreeram/workspace/ambl/custom_efficent_autodi
 # network_architecture: "efficientnet_b3"
 input_img_size: 128
 lr: 0.0001
-batch_size: 16
+end_lr: 0.00001  # minimum learning rate 
+batch_size: 32
 num_workers: 4
 epochs: 50  #50
 early_stopping_patience: 10 #10

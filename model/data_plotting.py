@@ -3,6 +3,7 @@
 from PIL import Image, ImageDraw, ImageFont
 import torchvision.transforms as transforms
 import seaborn as sns
+import numpy as np
 import matplotlib
 matplotlib.use('Agg')  # Use a non-interactive backend
 import matplotlib.pyplot as plt
@@ -10,15 +11,20 @@ import os
 from sklearn.metrics import confusion_matrix
 import torch
 from collections import Counter
+from matplotlib.font_manager import FontProperties
 
-def save_batch_collage_with_labels(data_loader, save_path, all_labels, font_path="NotoSansCJK-Regular.ttc", nrow=8):
+FONT_PATH = "/home/shreeram/workspace/ambl/custom_efficent_autodistillation/Noto_Sans_JP/static/NotoSansJP-Regular.ttf"
+
+
+
+def save_batch_collage_with_labels(data_loader, save_path, all_labels, font_path=FONT_PATH, nrow=8):
     # Get a batch of images from the DataLoader
     batch_temp = next(iter(data_loader))  
     images_temp, labels_temp = batch_temp 
 
     # Define font (use a Japanese-compatible font)
     try:
-        font = ImageFont.truetype(font_path, 20)
+        font = ImageFont.truetype(font_path, 10)
     except:
         font = ImageFont.load_default()
 
@@ -117,26 +123,48 @@ def validate_model_cm(model, test_loader, criterion):
     return accuracy, avg_loss, cm
 
 
+
 def plot_confusion_matrix(best_model, test_loader, criterion, data_type, output_dir):
     test_accuracy, test_loss, test_cm = validate_model_cm(best_model, test_loader, criterion)
 
-    
     # Output results
     print(f"{data_type} Loss: {test_loss:.4f}")
     print(f"{data_type} Accuracy: {test_accuracy:.2f}%")
 
-    # Plot the confusion matrix
-    # Set a font that supports Japanese characters
-    plt.rcParams["font.family"] = "Noto Sans CJK JP"  # Alternative: "IPAexGothic" or "Yu Gothic"
+    custom_font = FontProperties(fname=FONT_PATH)
 
+    # Plot the confusion matrix using matplotlib
     plt.figure(figsize=(10, 7))
-    sns.heatmap(test_cm, annot=True, fmt='d', cmap='Blues', xticklabels=test_loader.dataset.classes, yticklabels=test_loader.dataset.classes)
-    plt.xlabel('Predicted')
-    plt.ylabel('True')
-    plt.title(f'Confusion Matrix \n {data_type} Accuracy: {test_accuracy:.2f}%')
-    # plt.savefig("confusion_matrix_b0_only")
-    plt.savefig(os.path.join(output_dir,f"confusion_matrix_{data_type}.png"))
+
+    # Display the confusion matrix with imshow (matplotlib)
+    cax = plt.imshow(test_cm, interpolation='nearest', cmap='Blues')
+    plt.colorbar(cax)
+
+    # Annotate confusion matrix values
+    classes = test_loader.dataset.classes
+    thresh = test_cm.max() / 2.
+    for i in range(test_cm.shape[0]):
+        for j in range(test_cm.shape[1]):
+            plt.text(j, i, f'{test_cm[i, j]}', ha="center", va="center", 
+                     color="white" if test_cm[i, j] > thresh else "black", 
+                     fontproperties=custom_font)
+
+    # Labeling ticks
+    plt.xticks(np.arange(test_cm.shape[1]), classes, rotation=45, fontproperties=custom_font, fontsize=8)
+    plt.yticks(np.arange(test_cm.shape[0]), classes, fontproperties=custom_font,fontsize=8)
+
+    plt.xlabel('Predicted', fontproperties=custom_font)
+    plt.ylabel('True', fontproperties=custom_font)
+    plt.title(f'Confusion Matrix \n {data_type} Accuracy: {test_accuracy:.2f}%', 
+              fontproperties=custom_font, fontsize=8)
+
+    # Save the confusion matrix plot
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, f"confusion_matrix_{data_type}.png"))
     plt.close()
+
+
+
 
 def plot_learning_rate(lr_values, save_path):
     """
