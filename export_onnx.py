@@ -29,7 +29,39 @@ class CustomEfficientNet(nn.Module):
         x = self.relu(x)
         return x
 
+class CustomEfficientNet_New(nn.Module):
+    def __init__(self, base_model):
+        super().__init__()
+        self.base_model = base_model
 
+        # Get the number of input features for the classifier layer
+        num_features = base_model.classifier.in_features
+        num_classes = base_model.classifier.out_features
+
+        # Feature extraction
+        self.bn1 = nn.BatchNorm2d(num_features)  # BatchNorm after feature extraction
+
+        # Fully connected layers with BatchNorm
+        self.fc1 = nn.Linear(num_features, num_features // 2)
+        self.bn2 = nn.BatchNorm1d(num_features // 2)
+        self.fc2 = nn.Linear(num_features // 2, num_classes)
+        self.bn3 = nn.BatchNorm1d(num_classes)
+
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        x = self.base_model.forward_features(x)  # Extract features
+        x = self.bn1(x)  # Apply BatchNorm on feature maps
+        x = x.mean([2, 3])  # Global Average Pooling (GAP)
+
+        x = self.fc1(x)
+        x = self.bn2(x)
+        x = self.relu(x)
+
+        x = self.fc2(x)
+        x = self.bn3(x)  # Final batch norm before output
+
+        return x
 
 
 class ExportONNX:
@@ -76,6 +108,7 @@ class ExportONNX:
         ).to(self.device)
 
         model = CustomEfficientNet(init_model)
+        # model = CustomEfficientNet_New(init_model)
 
         # `state_dict` をロード
         state_dict = torch.load(self.model_path, map_location=self.device)
@@ -143,11 +176,11 @@ class ExportONNX:
 
 
 labels_list = ['いわき', 'つくば', 'とちぎ', 'なにわ', '一宮', '三河', '三重', '上越', '下関', '世田谷', '久留米', '京都', '仙台', '伊勢志摩', '伊豆', '会津', '佐世保', '佐賀', '倉敷', '八戸', '八王子', '出雲', '函館', '前橋', '北九州', '北見', '千葉', '名古屋', '和歌山', '和泉', '品川', '四日市', '土浦', '堺', '多摩', '大分', '大宮', '大阪', '奄美', '奈良', '姫路', '宇都宮', '室蘭', '宮城', '宮崎', '富士山', '富山', '尾張小牧', '山口', '山形', '山梨', '岐阜', '岡山', '岡崎', '岩手', '島根', '川口', '川崎', '川越', '市原', '市川', '帯広', '平泉', '広島', '庄内', '弘前', '徳島', '愛媛', '成田', '所沢', '新潟', '旭川', '春日井', '春日部', '札幌', '杉並', '松戸', '松本', '板橋', '柏', '栃木', '横浜', '水戸', '江東', '沖縄', '沼津', '浜松', '湘南', '滋賀', '熊本', '熊谷', '白河', '盛岡', '相模', '知床', '石川', '神戸', '福井', '福山', '福岡', '福島', '秋田', '筑豊', '練馬', '群馬', '習志野', '船橋', '苫小牧', '葛飾', '袖ヶ浦', '諏訪', '豊橋', '豊田', '越谷', '足立', '那須', '郡山', '野田', '金沢', '釧路', '鈴鹿', '長岡', '長崎', '長野', '青森', '静岡', '飛騨', '飛鳥', '香川', '高崎', '高松', '高知', '鳥取', '鹿児島'] 
-
+labels_list = ['あ', 'い', 'う', 'え', 'か', 'き', 'く', 'け', 'こ', 'さ', 'す', 'せ', 'そ', 'た', 'ち', 'つ', 'て', 'と', 'な', 'に', 'ぬ', 'ね', 'の', 'は', 'ひ', 'ふ', 'ほ', 'ま', 'み', 'む', 'め', 'も', 'や', 'ゆ', 'よ', 'ら', 'り', 'る', 'れ', 'ろ', 'わ', 'を']
 # 実行例
 exporter = ExportONNX(
-    model_path="./runs/dataset_0_region_update2_customized_efficentnetb0/weights/best.pth",
-    onnx_path="./runs/dataset_0_region_update2_customized_efficentnetb0/weights/best.onnx",
+    model_path="./runs/Dataset_2_kana_update2_customized_efficentnetB0/weights/best.pth",
+    onnx_path="./runs/Dataset_2_kana_update2_customized_efficentnetB0/weights/best.onnx",
     labels=labels_list,
     mode="fp16"
 )

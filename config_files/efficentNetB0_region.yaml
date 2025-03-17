@@ -1,0 +1,22 @@
+dataset_path : "/home/shreeram/workspace/ambl/custom_efficent_autodistillation/Dataset"
+categories: ["dataset_0_region_update2"] 
+network_architecture: "efficientnet_b0"
+# network_architecture: "efficientnet_b3"
+input_img_size: 128
+lr: 0.0001  # starting
+end_lr: 0.00001  # minimum learning rate 
+batch_size: 32
+num_workers: 4
+epochs: 50  #50
+early_stopping_patience: 10 #10
+#device uses GPU if available else uses cpu by default
+project_base_dir: "runs" # Base project directory
+# project_name: "exp"
+project_name: "Dataset_0_region_update2_customized_efficentnetB0"
+
+
+# For teacher student training
+teacher_student_distillation: False
+temperature: 3.0  # Temperature for distillation 3.0 Default (try higher temperature 5.0)
+alpha: 0.7  # Weighting for soft vs. hard target loss  Default 0.7 (try 0.5)
+

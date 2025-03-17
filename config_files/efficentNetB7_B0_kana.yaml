@@ -1,11 +1,13 @@
 dataset_path : "/home/shreeram/workspace/ambl/custom_efficent_autodistillation/Dataset"
 # categories: ["Rock Paper Scissors.v1-raw-300x300.folder"]
-# categories: ["dataset_2_kana_update2"] 
-categories: ["dataset_0_region_update2"] 
-network_architecture: "efficientnet_b0"
+categories: ["dataset_2_kana_update2"] 
+# categories: ["dataset_0_region_update2"] 
+student_network_architecture: "efficientnet_b0"
+teacher_network_architecture: "efficientnet_b7"
+teacher_pre_trained_model: "/home/shreeram/workspace/ambl/custom_efficent_autodistillation/runs/Dataset_2_kana_update2_customized_efficentnetB0/weights/best.pth"
 # network_architecture: "efficientnet_b3"
 input_img_size: 128
-lr: 0.0001  # starting
+lr: 0.0001
 end_lr: 0.00001  # minimum learning rate 
 batch_size: 32
 num_workers: 4
@@ -14,11 +16,11 @@ early_stopping_patience: 10 #10
 #device uses GPU if available else uses cpu by default
 project_base_dir: "runs" # Base project directory
 # project_name: "exp"
-project_name: "dataset_0_region_update2_customized_efficentnetb0"
+project_name: "Dataset_2_kana_update2_customized_distillation_efficentnetB7toB0"
 
 
 # For teacher student training
-teacher_student_distillation: False
+teacher_student_distillation: True
 temperature: 3.0  # Temperature for distillation 3.0 Default (try higher temperature 5.0)
 alpha: 0.7  # Weighting for soft vs. hard target loss  Default 0.7 (try 0.5)
 

@@ -6,37 +6,24 @@ import datetime
 
 import copy
 import torch
-import torchvision.transforms as transforms
-from torchvision.datasets import ImageFolder
-from torch.utils.data import DataLoader
 import torch.nn.functional as F
-
 import numpy as np
-
 
 import timm
 from timm import create_model
-import matplotlib.pyplot as plt
-
-
 from tqdm import tqdm
-import seaborn as sns
 
 
 from utils.yaml_utils import load_yaml
 from utils.general_utils import create_directory, create_unique_directory
 
-from utils.graph_plotting import init_plot, update_plot,generate_eda_plot
-from utils.log_files import log_to_csv, log_to_csv_distillation
+from utils.log_files import log_to_csv_distillation
 from utils.compute_metrices import compute_metrics, plot_metrics
-from sklearn.metrics import confusion_matrix
 
 
-from model.data_plotting import plot_confusion_matrix
+from model.data_plotting import plot_confusion_matrix ,plot_learning_rate
 from model.data_loader import ImageTrainTransform,ImageTestTransform, TestDatasetLoader
-from model.trainner_custefficent import CustomModelTrainer, TrainingPlotter
-
-
+from model.trainner_custefficent import TrainingPlotter, CustomEfficientNet
 from model.data_loader import DatasetLoader, ModelValidator
 
 
@@ -89,7 +76,7 @@ set_seed(42)  # Set any fixed seed value for reproducibility
 
 
 # Load Configuration
-yaml_path = "./config_files/efficentNetB3_B0.yaml"
+yaml_path = "./config_files/efficentNetB7_B0_kana.yaml"
 config = load_yaml(file_path=yaml_path)
 
 # Check if config is loaded
@@ -100,7 +87,7 @@ if config:
     print("TEACHER_NETWORK_ARCHITECTURE:", config.get("teacher_network_architecture"))
     print("INPUT_IMG_SIZE:", config.get("input_img_size"))
     print("LEARNING_RATE:", config.get("lr"))
-    print("MIN_LR:", config.get("lr_end"))
+    print("MIN_LR:", config.get("end_lr"))
     print("BATCH_SIZE:", config.get("batch_size"))
     print("NUM_WORKERS:", config.get("num_workers"))
     print("EPOCHS:", config.get("epochs"))
@@ -147,109 +134,6 @@ WEIGHTS_DIR = create_directory(os.path.join(CURRENT_PJ_DIR_PATH,"weights"))
 
 
 
-
-# 🚀 **LOAD TEST DATASET**
-def load_test_dataset1(dataset_path, data_category="test", batch_size="8", transform=transform):
-    test_path = os.path.join(dataset_path, data_category)  # Use test path for loading dataset
-    test_dataset = ImageFolder(test_path, transform=transform)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-    return test_loader
-
-# 🚀 **LOAD DATASET**
-def load_dataset1(category, batch_size, train_transform, test_transform):
-    train_path = os.path.join(DATASET_PATH, category, "train")
-    val_path = os.path.join(DATASET_PATH, category, "valid")
-
-    train_dataset = ImageFolder(train_path, transform=train_transform)
-    val_dataset = ImageFolder(val_path, transform=test_transform)
-
-    # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    # val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-
-    train_loader = DataLoader(
-        train_dataset, 
-        batch_size=batch_size, 
-        shuffle=True,
-        num_workers=4,  #Loads data in parallel using 4 CPU threads (adjust based on system)
-        pin_memory=True, #Speeds up data transfer to GPU.
-        persistent_workers=True # Avoids worker restarts after each epoch.
-    )
-
-    val_loader = DataLoader(
-        val_dataset, 
-        batch_size=batch_size, 
-        shuffle=False, 
-        num_workers=4, 
-        pin_memory=True,
-        persistent_workers=True
-    )
-
-
-    #  Generate and Save EDA Plot
-    generate_eda_plot(
-        output_path=CURRENT_PJ_DIR_PATH,
-        train_dataset=train_dataset,
-        val_dataset= val_dataset,
-        category= category
-    )
-
-
-    return train_loader, val_loader
-
-
-
-# 🚀 **VALIDATE MODEL_cm**
-def validate_model_cm(model, test_loader, criterion):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model.to(device)  # Move model to appropriate device
-    model.eval()
-
-    correct, total, total_loss = 0, 0, 0
-    all_labels, all_predictions = [], []
-
-    with torch.no_grad():
-        for images, labels in test_loader:
-            images, labels = images.to(device), labels.to(device)
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            total_loss += loss.item()
-
-            _, predicted = torch.max(outputs, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-
-            all_labels.extend(labels.cpu().numpy())
-            all_predictions.extend(predicted.cpu().numpy())
-
-    accuracy = 100 * correct / total
-    avg_loss = total_loss / len(test_loader)
-
-    # Compute confusion matrix
-    cm = confusion_matrix(all_labels, all_predictions)
-
-    return accuracy, avg_loss, cm
-
-# 🚀 **VALIDATE MODEL**
-def validate_model(model, val_loader, criterion):
-    model.eval()
-    correct, total, total_loss = 0, 0, 0
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    with torch.no_grad():
-        for images, labels in val_loader:
-            images, labels = images.to(device), labels.to(device)
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            total_loss += loss.item()
-
-            _, predicted = torch.max(outputs, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-
-    accuracy = 100 * correct / total
-    avg_loss = total_loss / len(val_loader)
-    return accuracy, avg_loss
-
 # 🚀 **Knowledge Distillation Loss**
 def knowledge_distillation_loss(student_logits, teacher_logits, labels, temperature, alpha):
     soft_targets = F.kl_div(
@@ -268,8 +152,6 @@ def distill_to_b0(dataset_path, category, batch_size, min_learning_rate,train_tr
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    # Load dataset
-    # train_loader, val_loader = load_dataset(category, BATCH_SIZE)
 
     # Initialize the data loader
     train_loader, val_loader, all_labels = DatasetLoader(
@@ -281,14 +163,20 @@ def distill_to_b0(dataset_path, category, batch_size, min_learning_rate,train_tr
         current_pj_path=current_pj_dir_path
     ).load()
 
+    num_classes = len(train_loader.dataset.classes)
+
+
     # Load trained B7 teacher model
     teacher_model = create_model(
         model_name= TEACHER_NETWORK_ARCHITECTURE, 
-        num_classes=len(train_loader.dataset.classes),
+        pretrained=False,
+        num_classes=num_classes,
         drop_rate=0.3  # Applies 30% dropout to reduce overfitting
 
     )
     
+    # Customize the network
+    teacher_model = CustomEfficientNet(teacher_model)
     teacher_model.load_state_dict(
         torch.load(TEACHER_PRE_TRAINED_MODEL) 
     )
@@ -300,9 +188,10 @@ def distill_to_b0(dataset_path, category, batch_size, min_learning_rate,train_tr
     student_model = create_model(
         model_name=STUDENT_NETWORK_ARCHITECTURE, 
         pretrained=True, 
-        num_classes=len(train_loader.dataset.classes), 
+        num_classes=num_classes, 
         drop_rate=0.3
     )
+    student_model = CustomEfficientNet(student_model)
     student_model.to(device)
 
     optimizer = torch.optim.Adam(
@@ -311,15 +200,6 @@ def distill_to_b0(dataset_path, category, batch_size, min_learning_rate,train_tr
         weight_decay=1e-4
     )
     criterion = torch.nn.CrossEntropyLoss()
-
-    best_loss = np.inf
-    patience_counter = 0
-    train_losses, val_losses, val_accuracies = [], [], []
-
-    # Initilize best model
-    best_model = copy.deepcopy(student_model)
-    fig, ax = init_plot()
-    num_classes = len(train_loader.dataset.classes)
 
     # Initialize the learning rate scheduler
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -332,41 +212,38 @@ def distill_to_b0(dataset_path, category, batch_size, min_learning_rate,train_tr
         verbose=True,
     )
 
-
-    # Initialize the plotter
+     # Initialize the plotter
     plotter = TrainingPlotter()
-
+    # Initilize best model
+    best_model = copy.deepcopy(student_model)
     best_loss = np.inf
     train_losses, val_losses, val_accuracies = [], [], []
     epochs_metrics, precisions_metrics, recalls_metrics, f1_scores_metrics = [], [], [], []
     precision_teachers, recall_teachers, f1_teachers = [], [], [] 
     lrs = []
 
-
+    print("Training started....")
+    patience_counter = 0
 
     for epoch in range(1,EPOCHS+1):
-
         start_time = time.time()  # Track epoch start time
         student_model.train()
         total_loss = 0
-
-        all_teacher_preds = []
         all_preds = []
         all_labels = []
+        all_teacher_preds = []
 
-        # Progress Bar
         progress_bar = tqdm(enumerate(train_loader, 1), total=len(train_loader), desc=f"Epoch {epoch}/{EPOCHS}", leave=True)
-
         # for images, labels in train_loader:
         for _, (images, labels) in progress_bar:
             images, labels = images.to(device), labels.to(device)
+            optimizer.zero_grad()  # Resets gradients before backprop
 
             with torch.no_grad():
                 teacher_outputs = teacher_model(images)
                 _, preds_teacher = torch.max(teacher_outputs,1)
 
             student_outputs = student_model(images)
-
             _, preds = torch.max(student_outputs,1)
 
             loss = knowledge_distillation_loss(
@@ -377,7 +254,6 @@ def distill_to_b0(dataset_path, category, batch_size, min_learning_rate,train_tr
                 alpha=ALPHA
             )
 
-            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
@@ -414,7 +290,6 @@ def distill_to_b0(dataset_path, category, batch_size, min_learning_rate,train_tr
 
 
         avg_train_loss = total_loss / len(train_loader)
-        # val_accuracy, val_loss = validate_model(student_model, val_loader, criterion)
         val_accuracy, val_loss = ModelValidator(
             model=student_model,
             criterion=criterion,
@@ -456,11 +331,6 @@ def distill_to_b0(dataset_path, category, batch_size, min_learning_rate,train_tr
             recall_student=recall,
             f1_student=f1)  # Save to CSV
         
-
-        # update_plot(train_losses, val_losses, val_accuracies, category)
-
-        # update_plot(fig, ax, train_losses, val_losses, val_accuracies, category)  #  Update live plot
-
         # Save last model
         torch.save(student_model.state_dict(), os.path.join(WEIGHTS_DIR,"last.pth"))
 
@@ -469,23 +339,25 @@ def distill_to_b0(dataset_path, category, batch_size, min_learning_rate,train_tr
             best_loss = val_loss
             patience_counter = 0
             best_model = copy.deepcopy(student_model)
-            torch.save(student_model.state_dict(), os.path.join(WEIGHTS_DIR,"best_distillation.pth"))
+            torch.save(student_model.state_dict(), os.path.join(WEIGHTS_DIR,"best.pth"))
             # torch.save(student_model.state_dict(), f"B0_Distillation_{category}.pth")
         else:
             patience_counter += 1
 
         if patience_counter >= EARLY_STOPPING_PATIENCE:
-            print(f"⚠️ Early stopping triggered for {category} at epoch {epoch}.")
+            print(f"Early stopping triggered for {category} at epoch {epoch}.")
             break
-    # Set a font that supports Japanese characters
-    # plt.rcParams["font.family"] = "Noto Sans CJK JP"  # Alternative: "IPAexGothic" or "Yu Gothic"
-
+    
     print(f"✅ Saved {STUDENT_NETWORK_ARCHITECTURE} model for {category}")
 
     # Update the plot at the end of training
     plotter.update_plot(train_losses=train_losses,
                         val_losses=val_losses)
     
+    # Save the plot to a file (e.g., "training_plot.png")
+    plotter.save_plot(os.path.join(current_pj_dir_path,"results.png"))
+    plot_learning_rate(save_path=current_pj_dir_path, lr_values=lrs)
+
     plot_metrics(
             output_path=current_pj_dir_path,
             epochs_metrics=epochs_metrics,
@@ -557,7 +429,6 @@ for category in CATEGORIES:
 
 
     data_type = "test_real"
-
     if not os.path.exists(os.path.join(DATASET_PATH,category,data_type)):
         print("Path does not exist: ",os.path.join(DATASET_PATH,category,data_type))
         exit()

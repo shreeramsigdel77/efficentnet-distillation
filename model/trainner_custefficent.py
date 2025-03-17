@@ -92,26 +92,6 @@ class CustomEfficientNet(nn.Module):
         return x
 
 
-# class CustomEfficientNet(nn.Module):
-#     def __init__(self, base_model):
-#         super().__init__()
-#         self.base_model = base_model
-
-#         num_features = base_model.classifier.in_features
-#         self.bn = nn.BatchNorm1d(num_features)  # ✅ Works with CNNs
-#         self.fc = nn.Conv2d(num_features, base_model.classifier.out_features, kernel_size=1)
-
-#     def forward(self, x):
-#         x = self.base_model.forward_features(x)
-#         x = x.mean([2, 3])  # Global Average Pooling
-#         x = x.view(x.shape[0], -1)  # ✅ Ensure correct shape
-#         x = self.bn(x)
-#         x = self.fc(x.unsqueeze(-1).unsqueeze(-1))  # Ensure 4D input for Conv2d 
-#         # the squeeze(), the shape of x might be [batch_size, features, 1, 1] because the Conv2d layer introduces two singleton dimensions (height and width = 1)
-#         # applying squeeze(-1).squeeze(-1), it removes the last two dimensions (1 and 1), resulting in a tensor shape of [batch_size, features]
-#         return x.squeeze(-1).squeeze(-1)  # Remove unnecessary dims
-
-
 
 
 class CustomModelTrainer:
@@ -152,11 +132,13 @@ class CustomModelTrainer:
 
         num_classes = len(train_loader.dataset.classes)
         print(f"🔹 Train Loader and Val Loader are completed...")
+        
+        bool_value = False if self.network_architecture == "efficientnet_b7" else True
 
         # Initialize model
         load_model = timm.create_model(
             model_name=self.network_architecture,
-            pretrained=True,
+            pretrained=bool_value,
             num_classes=num_classes,
             drop_rate=0.3
         )
@@ -184,7 +166,7 @@ class CustomModelTrainer:
 
         # Initialize the plotter
         plotter = TrainingPlotter()
-
+        # Initilize best model
         best_model = copy.deepcopy(model)
         best_loss = np.inf
         train_losses, val_losses, val_accuracies = [], [], []
@@ -283,7 +265,7 @@ class CustomModelTrainer:
                 patience_counter += 1
 
             if patience_counter >= self.early_stopping_patience:
-                print(f"⚠️ Early stopping triggered for {self.category} at epoch {epoch}.")
+                print(f"Early stopping triggered for {self.category} at epoch {epoch}.")
                 break
 
         print(f"✅ Saved {self.network_architecture} model for {self.category}")
@@ -294,15 +276,7 @@ class CustomModelTrainer:
         
         # Save the plot to a file (e.g., "training_plot.png")
         plotter.save_plot(os.path.join(self.current_pj_dir_path,"results.png"))
-
-
         plot_learning_rate(save_path=self.current_pj_dir_path, lr_values=lrs)
-
-        # Set font for Japanese characters
-        # plt.rcParams["font.family"] = "Noto Sans CJK JP"
-
-        # plt.savefig(os.path.join(self.current_pj_dir_path, "result.png"), dpi=300)  # Save plot as PNG
-        # plt.close()
 
         plot_metrics(
             output_path=self.current_pj_dir_path,

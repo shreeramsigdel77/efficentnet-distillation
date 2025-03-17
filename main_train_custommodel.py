@@ -62,7 +62,9 @@ set_seed(42)  # Set any fixed seed value for reproducibility
 
 
 # Load Configuration
-yaml_path = "./config_files/efficentNetB0_Test.yaml"
+# yaml_path = "./config_files/efficentNetB0_Test.yaml"
+# yaml_path = "./config_files/efficentNetB0_kana.yaml"
+yaml_path = "./config_files/efficentNetB7_kana.yaml"
 # yaml_path = "./config_files/efficentNetB0.yaml"
 # yaml_path="./config_files/efficentNetB0_kana_params.yaml"
 config = load_yaml(file_path=yaml_path)
@@ -73,8 +75,8 @@ if config:
     print("CATEGORIES:", config.get("categories"))
     print("NETWORK_ARCHITECTURE:", config.get("network_architecture"))
     print("INPUT_IMG_SIZE:", config.get("input_img_size"))
-    print("LR:", config.get("lr"))
-    print("MIN_LR:", config.get("lr_end"))
+    print("LEARNING_RATE:", config.get("lr"))
+    print("MIN_LR:", config.get("end_lr"))
     print("BATCH_SIZE:", config.get("batch_size"))
     print("NUM_WORKERS:", config.get("num_workers"))
     print("EPOCHS:", config.get("epochs"))
